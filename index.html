@@ -39,6 +39,8 @@
       width: 350px;
       height: 350px;
       border-radius: 50%;
+      pointer-events: none;
+      -webkit-user-drag: none;
     }
 
     .vinyl-container:hover img {
@@ -137,6 +139,9 @@
   </div>
 
   <audio id="audio" src="assets/M. T. Hadley - Make Room For Happiness - 01 Why Is It That Way-.mp3" preload="auto"></audio>
+  <audio id="audio-static" src="assets/start-static.mp3" preload="auto"></audio>
+  <audio id="audio-scratch" src="assets/scratch-pause.mp3" preload="auto"></audio>
+  <audio id="audio-endloop" src="assets/end-loop.mp3" preload="auto" loop></audio>
 
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/Draggable.min.js"></script>
@@ -146,8 +151,13 @@
     const vinyl = document.getElementById('vinyl');
     const recordImg = document.getElementById('record-img');
     const audio = document.getElementById('audio');
+    const audioStatic = document.getElementById('audio-static');
+    const audioScratch = document.getElementById('audio-scratch');
+    const audioEndloop = document.getElementById('audio-endloop');
     const playHint = document.getElementById('play-hint');
 
+    // States: 'idle' | 'static' | 'playing' | 'paused' | 'ending'
+    let state = 'idle';
     let isPlaying = false;
     let spinTween = null;
     let hasInteracted = false;
@@ -161,22 +171,77 @@
       paused: true,
     });
 
+    // When the main song ends, transition to end-loop
+    audio.addEventListener('ended', () => {
+      if (state === 'playing') {
+        state = 'ending';
+        audioEndloop.currentTime = 0;
+        audioEndloop.play();
+        // Keep spinning, keep popups going
+      }
+    });
+
     vinyl.addEventListener('click', () => {
       if (!hasInteracted) {
         hasInteracted = true;
         gsap.to(playHint, { opacity: 0, duration: 0.5, onComplete: () => playHint.remove() });
       }
 
-      if (isPlaying) {
-        pause();
-      } else {
-        play();
+      if (state === 'idle') {
+        startCycle();
+      } else if (state === 'static') {
+        // Ignore clicks during the static intro
+      } else if (state === 'playing') {
+        pauseSong();
+      } else if (state === 'paused') {
+        resumeSong();
+      } else if (state === 'ending') {
+        stopEnding();
+        startCycle();
       }
     });
 
-    function play() {
+    function startCycle() {
+      state = 'static';
+      isPlaying = true;
+      audio.currentTime = 0;
+      audioStatic.currentTime = 0;
+      audioStatic.play();
+
+      // Start spinning during static
+      gsap.killTweensOf(spinTween);
+      spinTween.timeScale(1);
+      spinTween.resume();
+      startScheduler();
+
+      audioStatic.addEventListener('ended', function onStaticEnd() {
+        audioStatic.removeEventListener('ended', onStaticEnd);
+        if (state === 'static') {
+          state = 'playing';
+          audio.play();
+        }
+      });
+    }
+
+    function pauseSong() {
+      state = 'paused';
+      isPlaying = false;
+      audio.pause();
+
+      // Play scratch effect
+      audioScratch.currentTime = 0;
+      audioScratch.play();
+
+      // Decelerate the spin over 1 second then pause
+      gsap.to(spinTween, { timeScale: 0, duration: 1, ease: 'power2.out', onComplete: () => spinTween.pause() });
+      stopScheduler();
+    }
+
+    function resumeSong() {
+      state = 'playing';
       isPlaying = true;
       audio.play();
+
       // Kill any deceleration tween and resume spin
       gsap.killTweensOf(spinTween);
       spinTween.timeScale(1);
@@ -184,11 +249,12 @@
       startScheduler();
     }
 
-    function pause() {
+    function stopEnding() {
+      audioEndloop.pause();
+      audioEndloop.currentTime = 0;
       isPlaying = false;
-      audio.pause();
-      // Decelerate the spin over 1 second then pause
-      gsap.to(spinTween, { timeScale: 0, duration: 1, ease: 'power2.out', onComplete: () => spinTween.pause() });
+      // Spin will be restarted by startCycle
+      gsap.killTweensOf(spinTween);
       stopScheduler();
     }
 
