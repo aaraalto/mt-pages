@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vinyl Player</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
@@ -47,6 +49,79 @@
       color: #999;
       font-size: 14px;
       white-space: nowrap;
+    }
+
+    .popup {
+      position: fixed;
+      z-index: 1000;
+      min-width: 280px;
+      max-width: 360px;
+      border: 3px solid #000;
+      border-radius: 4px;
+      box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+      font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+      overflow: hidden;
+      pointer-events: auto;
+    }
+
+    .popup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 8px;
+      background: linear-gradient(90deg, #000080, #1084d0);
+      color: #fff;
+      font-size: 12px;
+      font-family: 'Tahoma', 'MS Sans Serif', sans-serif;
+    }
+
+    .popup-close {
+      background: #c0c0c0;
+      border: 1px outset #fff;
+      color: #000;
+      font-size: 12px;
+      font-weight: bold;
+      width: 18px;
+      height: 18px;
+      line-height: 16px;
+      text-align: center;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .popup-close:active {
+      border-style: inset;
+    }
+
+    .popup-body {
+      padding: 16px;
+      text-align: center;
+      font-size: 15px;
+      line-height: 1.4;
+    }
+
+    .popup-cta {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 8px 24px;
+      font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+      font-size: 16px;
+      font-weight: bold;
+      border: 2px outset #ccc;
+      cursor: pointer;
+    }
+
+    .popup-cta:active {
+      border-style: inset;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .blink {
+      animation: blink 0.6s step-end infinite;
     }
   </style>
 </head>
