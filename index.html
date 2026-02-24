@@ -60,7 +60,52 @@
 
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
   <script>
-    // Scripts will be added in subsequent tasks
+    const vinyl = document.getElementById('vinyl');
+    const recordImg = document.getElementById('record-img');
+    const audio = document.getElementById('audio');
+    const playHint = document.getElementById('play-hint');
+
+    let isPlaying = false;
+    let spinTween = null;
+    let hasInteracted = false;
+
+    // Create the infinite spin tween (paused initially)
+    spinTween = gsap.to(recordImg, {
+      rotation: 360,
+      duration: 3.5,
+      ease: 'none',
+      repeat: -1,
+      paused: true,
+    });
+
+    vinyl.addEventListener('click', () => {
+      if (!hasInteracted) {
+        hasInteracted = true;
+        gsap.to(playHint, { opacity: 0, duration: 0.5, onComplete: () => playHint.remove() });
+      }
+
+      if (isPlaying) {
+        pause();
+      } else {
+        play();
+      }
+    });
+
+    function play() {
+      isPlaying = true;
+      audio.play();
+      // Kill any deceleration tween and resume spin
+      gsap.killTweensOf(spinTween);
+      spinTween.timeScale(1);
+      spinTween.resume();
+    }
+
+    function pause() {
+      isPlaying = false;
+      audio.pause();
+      // Decelerate the spin over 1 second then pause
+      gsap.to(spinTween, { timeScale: 0, duration: 1, ease: 'power2.out', onComplete: () => spinTween.pause() });
+    }
   </script>
 </body>
 </html>
