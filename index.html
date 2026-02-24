@@ -181,6 +181,130 @@
       // Decelerate the spin over 1 second then pause
       gsap.to(spinTween, { timeScale: 0, duration: 1, ease: 'power2.out', onComplete: () => spinTween.pause() });
     }
+
+    const POPUPS = [
+      {
+        id: 1,
+        title: 'Congratulations!!!',
+        bg: 'linear-gradient(135deg, #ff6b6b, #ffd93d)',
+        body: `<div style="font-size:22px;color:#ff0000" class="blink">&#127881; YOU ARE THE 1,000,000th VISITOR! &#127881;</div>
+               <p>Click below to claim your FREE prize!</p>`,
+        cta: 'CLAIM YOUR PRIZE!!!',
+        ctaColor: '#ff0000',
+        ctaBg: '#ffff00',
+        persistent: true,
+      },
+      {
+        id: 2,
+        title: 'Local Singles',
+        bg: 'linear-gradient(135deg, #ff69b4, #ff1493)',
+        body: `<div style="font-size:18px;color:#fff;">&#128293; Hot singles in your area are waiting! &#128293;</div>
+               <div style="width:100px;height:80px;margin:10px auto;background:#ddd;border-radius:8px;filter:blur(5px);display:flex;align-items:center;justify-content:center;">&#128100;</div>`,
+        cta: 'MEET THEM NOW',
+        ctaColor: '#fff',
+        ctaBg: '#ff1493',
+        persistent: false,
+      },
+      {
+        id: 3,
+        title: 'SECURITY WARNING',
+        bg: 'linear-gradient(135deg, #ff0000, #cc0000)',
+        body: `<div style="font-size:20px;color:#fff;">&#9888;&#65039; YOUR COMPUTER MAY BE AT RISK! &#9888;&#65039;</div>
+               <p style="color:#ffff00;">47 viruses detected! Immediate action required!</p>`,
+        cta: 'DOWNLOAD PROTECTION',
+        ctaColor: '#fff',
+        ctaBg: '#006600',
+        persistent: true,
+      },
+      {
+        id: 4,
+        title: 'Weight Loss Secret',
+        bg: 'linear-gradient(135deg, #00ff00, #00cc00)',
+        body: `<div style="font-size:18px;color:#000;">Lose 30 Pounds With This</div>
+               <div style="font-size:28px;color:#ff0000;font-weight:bold;">ONE WEIRD TRICK</div>
+               <div style="font-size:16px;">Doctors HATE this!</div>`,
+        cta: 'LEARN THE SECRET',
+        ctaColor: '#fff',
+        ctaBg: '#ff6600',
+        persistent: false,
+      },
+      {
+        id: 5,
+        title: 'FREE GIVEAWAY',
+        bg: 'linear-gradient(135deg, #c0c0c0, #e0e0e0)',
+        body: `<div style="font-size:24px;color:#0000ff;" class="blink">FREE iPod Nano!!!</div>
+               <p>Just click here — no strings attached!</p>`,
+        cta: 'GET IT FREE!!!',
+        ctaColor: '#000',
+        ctaBg: '#00ffff',
+        persistent: false,
+      },
+      {
+        id: 6,
+        title: 'URGENT ALERT',
+        bg: 'linear-gradient(135deg, #ff4500, #ff6347)',
+        body: `<div style="font-size:18px;color:#fff;">&#128680; URGENT: Your account has been compromised! &#128680;</div>
+               <p style="color:#ffff00;">Verify your identity immediately to avoid suspension.</p>`,
+        cta: 'VERIFY NOW',
+        ctaColor: '#fff',
+        ctaBg: '#8b0000',
+        persistent: true,
+      },
+      {
+        id: 7,
+        title: 'Work From Home',
+        bg: 'linear-gradient(135deg, #ffd700, #ffaa00)',
+        body: `<div style="font-size:22px;color:#006600;">Make $5,000/week &#128176;</div>
+               <p>Working from home! No experience needed!</p>`,
+        cta: 'START EARNING NOW',
+        ctaColor: '#fff',
+        ctaBg: '#006600',
+        persistent: false,
+      },
+      {
+        id: 8,
+        title: 'Software Update',
+        bg: 'linear-gradient(135deg, #e0e0e0, #f5f5f5)',
+        body: `<div style="font-size:16px;color:#333;">&#9888;&#65039; Your browser is out of date!</div>
+               <p style="color:#666;">A critical update is required for security.</p>`,
+        cta: 'DOWNLOAD UPDATE',
+        ctaColor: '#fff',
+        ctaBg: '#0066cc',
+        persistent: false,
+      },
+      {
+        id: 9,
+        title: 'WINNER!!!',
+        bg: 'linear-gradient(135deg, #9400d3, #ff1493)',
+        body: `<div style="font-size:20px;color:#ffff00;" class="blink">&#127881; CONGRATULATIONS! &#127881;</div>
+               <p style="color:#fff;">You've been selected for a $500 Walmart Gift Card!</p>`,
+        cta: 'CLAIM $500 NOW',
+        ctaColor: '#000',
+        ctaBg: '#ffff00',
+        persistent: false,
+      },
+    ];
+
+    function createPopupEl(data) {
+      const el = document.createElement('div');
+      el.className = 'popup';
+      el.dataset.popupId = data.id;
+      el.innerHTML = `
+        <div class="popup-header">
+          <span>${data.title}</span>
+          <button class="popup-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="popup-body" style="background:${data.bg}">
+          ${data.body}
+          <div>
+            <button class="popup-cta" style="color:${data.ctaColor};background:${data.ctaBg}">
+              ${data.cta}
+            </button>
+          </div>
+        </div>
+      `;
+      return el;
+    }
   </script>
 </body>
 </html>
