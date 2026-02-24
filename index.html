@@ -332,11 +332,15 @@
 
     function getRandomPosition(el) {
       const margin = 20;
-      const maxX = window.innerWidth - 360 - margin;
-      const maxY = window.innerHeight - 300 - margin;
-      const x = randomBetween(margin, Math.max(margin, maxX));
-      const y = randomBetween(margin, Math.max(margin, maxY));
-      return { x, y };
+      const rect = el.getBoundingClientRect();
+      const w = rect.width || 360;
+      const h = rect.height || 200;
+      const maxX = window.innerWidth - w - margin;
+      const maxY = window.innerHeight - h - margin;
+      return {
+        left: randomBetween(margin, Math.max(margin, maxX)),
+        top: randomBetween(margin, Math.max(margin, maxY)),
+      };
     }
 
     function shuffleArray(arr) {
@@ -355,8 +359,11 @@
       const el = createPopupEl(data);
       document.body.appendChild(el);
 
+      // Measure actual size, then position within viewport
       const pos = getRandomPosition(el);
-      gsap.set(el, { x: pos.x, y: pos.y, scale: 0, opacity: 0 });
+      el.style.left = pos.left + 'px';
+      el.style.top = pos.top + 'px';
+      gsap.set(el, { scale: 0, opacity: 0 });
 
       // Random entrance animation
       const entrances = ['bounce', 'slide', 'slam'];
@@ -366,10 +373,10 @@
         gsap.to(el, { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.7)' });
       } else if (entrance === 'slide') {
         const edge = Math.floor(Math.random() * 4);
-        const startX = edge === 0 ? -400 : edge === 1 ? window.innerWidth + 100 : pos.x;
-        const startY = edge === 2 ? -400 : edge === 3 ? window.innerHeight + 100 : pos.y;
+        const startX = edge === 0 ? -400 : edge === 1 ? window.innerWidth + 100 : 0;
+        const startY = edge === 2 ? -400 : edge === 3 ? window.innerHeight + 100 : 0;
         gsap.set(el, { x: startX, y: startY, scale: 1, opacity: 1 });
-        gsap.to(el, { x: pos.x, y: pos.y, duration: 0.5, ease: 'power2.out' });
+        gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'power2.out' });
       } else if (entrance === 'slam') {
         gsap.to(el, { scale: 1, opacity: 1, duration: 0.15, ease: 'power4.in' });
         // Screen shake
