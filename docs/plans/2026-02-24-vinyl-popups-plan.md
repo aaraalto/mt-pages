@@ -1,0 +1,682 @@
+# Vinyl Record Pop-up Site — Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Build a single-page interactive site with a spinning vinyl record music player and obnoxious retro spam pop-up ads.
+
+**Architecture:** Single `index.html` file with embedded `<style>` and `<script>` blocks. GSAP loaded via CDN handles all animations (vinyl spin, pop-up entrances/exits, screen shake). A pop-up scheduler manages staggered appearance, dismissal, and persistent reappearance. No build tools.
+
+**Tech Stack:** HTML5, CSS3, JavaScript (ES6+), GSAP 3.x (CDN)
+
+---
+
+### Task 1: Page Scaffold & Noise Background
+
+**Files:**
+- Create: `index.html`
+- Create: `assets/` (directory for user-provided vinyl graphic and MP3)
+
+**Step 1: Create the HTML scaffold with noise background**
+
+Create `index.html` with:
+- HTML5 doctype, viewport meta
+- GSAP CDN script tag: `https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js`
+- Full-viewport body, white background
+- CSS noise texture using a tiny inline SVG filter (`<svg>` with `<feTurbulence>` and `<feColorMatrix>`) applied as a `::before` pseudo-element on body
+- CSS reset (margin/padding 0, box-sizing border-box)
+- A centered container div for the vinyl record
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vinyl Player</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, sans-serif;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      opacity: 0.06;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    .vinyl-container {
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .vinyl-container img {
+      width: 350px;
+      height: 350px;
+      border-radius: 50%;
+    }
+
+    .play-hint {
+      position: absolute;
+      bottom: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #999;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="vinyl-container" id="vinyl">
+    <img src="assets/record.png" alt="Vinyl Record" id="record-img">
+    <div class="play-hint" id="play-hint">Click to play</div>
+  </div>
+
+  <audio id="audio" src="assets/track.mp3" preload="auto"></audio>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
+  <script>
+    // Scripts will be added in subsequent tasks
+  </script>
+</body>
+</html>
+```
+
+**Step 2: Create assets directory**
+
+```bash
+mkdir -p assets
+```
+
+Add placeholder note: user will drop `record.png` and `track.mp3` into `assets/`.
+
+**Step 3: Open in browser and verify**
+
+Open `index.html` in a browser. Expect: white page with subtle noise texture, broken image icon centered (since no assets yet), "Click to play" text below.
+
+**Step 4: Commit**
+
+```bash
+git add index.html
+git commit -m "Scaffold page with noise background and vinyl container"
+```
+
+---
+
+### Task 2: Vinyl Spin Animation & Play/Pause
+
+**Files:**
+- Modify: `index.html` (script block)
+
+**Step 1: Add vinyl spin and play/pause logic**
+
+Replace the script placeholder in `index.html` with:
+
+```javascript
+const vinyl = document.getElementById('vinyl');
+const recordImg = document.getElementById('record-img');
+const audio = document.getElementById('audio');
+const playHint = document.getElementById('play-hint');
+
+let isPlaying = false;
+let spinTween = null;
+let hasInteracted = false;
+
+// Create the infinite spin tween (paused initially)
+spinTween = gsap.to(recordImg, {
+  rotation: 360,
+  duration: 3.5,
+  ease: 'none',
+  repeat: -1,
+  paused: true,
+});
+
+vinyl.addEventListener('click', () => {
+  if (!hasInteracted) {
+    hasInteracted = true;
+    gsap.to(playHint, { opacity: 0, duration: 0.5, onComplete: () => playHint.remove() });
+  }
+
+  if (isPlaying) {
+    pause();
+  } else {
+    play();
+  }
+});
+
+function play() {
+  isPlaying = true;
+  audio.play();
+  // Kill any deceleration tween and resume spin
+  gsap.killTweensOf(spinTween);
+  spinTween.timeScale(1);
+  spinTween.resume();
+}
+
+function pause() {
+  isPlaying = false;
+  audio.pause();
+  // Decelerate the spin over 1 second then pause
+  gsap.to(spinTween, { timeScale: 0, duration: 1, ease: 'power2.out', onComplete: () => spinTween.pause() });
+}
+```
+
+**Step 2: Test in browser**
+
+Drop any PNG as `assets/record.png` and any MP3 as `assets/track.mp3`. Click the record:
+- Expected: image spins, music plays, hint fades out
+- Click again: spin decelerates over ~1s, music pauses
+- Click again: spin resumes, music plays
+
+**Step 3: Commit**
+
+```bash
+git add index.html
+git commit -m "Add vinyl spin animation with play/pause toggle"
+```
+
+---
+
+### Task 3: Pop-up HTML/CSS Templates
+
+**Files:**
+- Modify: `index.html` (style block)
+
+**Step 1: Add pop-up CSS styles**
+
+Add these styles to the `<style>` block in `index.html`:
+
+```css
+@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
+
+.popup {
+  position: fixed;
+  z-index: 1000;
+  min-width: 280px;
+  max-width: 360px;
+  border: 3px solid #000;
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+  font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  font-size: 12px;
+  font-family: 'Tahoma', 'MS Sans Serif', sans-serif;
+}
+
+.popup-close {
+  background: #c0c0c0;
+  border: 1px outset #fff;
+  color: #000;
+  font-size: 12px;
+  font-weight: bold;
+  width: 18px;
+  height: 18px;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.popup-close:active {
+  border-style: inset;
+}
+
+.popup-body {
+  padding: 16px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.popup-cta {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 24px;
+  font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+  font-size: 16px;
+  font-weight: bold;
+  border: 2px outset #ccc;
+  cursor: pointer;
+}
+
+.popup-cta:active {
+  border-style: inset;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.blink {
+  animation: blink 0.6s step-end infinite;
+}
+```
+
+**Step 2: Verify styles load**
+
+Open in browser. No visual change yet (no pop-ups rendered), but no CSS errors in console.
+
+**Step 3: Commit**
+
+```bash
+git add index.html
+git commit -m "Add pop-up CSS styles with retro spam aesthetic"
+```
+
+---
+
+### Task 4: Pop-up Content Data & Rendering
+
+**Files:**
+- Modify: `index.html` (script block)
+
+**Step 1: Add pop-up data array and render function**
+
+Add to the script block, after the play/pause code:
+
+```javascript
+const POPUPS = [
+  {
+    id: 1,
+    title: 'Congratulations!!!',
+    bg: 'linear-gradient(135deg, #ff6b6b, #ffd93d)',
+    body: `<div style="font-size:22px;color:#ff0000" class="blink">&#127881; YOU ARE THE 1,000,000th VISITOR! &#127881;</div>
+           <p>Click below to claim your FREE prize!</p>`,
+    cta: 'CLAIM YOUR PRIZE!!!',
+    ctaColor: '#ff0000',
+    ctaBg: '#ffff00',
+    persistent: true,
+  },
+  {
+    id: 2,
+    title: 'Local Singles',
+    bg: 'linear-gradient(135deg, #ff69b4, #ff1493)',
+    body: `<div style="font-size:18px;color:#fff;">&#128293; Hot singles in your area are waiting! &#128293;</div>
+           <div style="width:100px;height:80px;margin:10px auto;background:#ddd;border-radius:8px;filter:blur(5px);display:flex;align-items:center;justify-content:center;">&#128100;</div>`,
+    cta: 'MEET THEM NOW',
+    ctaColor: '#fff',
+    ctaBg: '#ff1493',
+    persistent: false,
+  },
+  {
+    id: 3,
+    title: 'SECURITY WARNING',
+    bg: 'linear-gradient(135deg, #ff0000, #cc0000)',
+    body: `<div style="font-size:20px;color:#fff;">&#9888;&#65039; YOUR COMPUTER MAY BE AT RISK! &#9888;&#65039;</div>
+           <p style="color:#ffff00;">47 viruses detected! Immediate action required!</p>`,
+    cta: 'DOWNLOAD PROTECTION',
+    ctaColor: '#fff',
+    ctaBg: '#006600',
+    persistent: true,
+  },
+  {
+    id: 4,
+    title: 'Weight Loss Secret',
+    bg: 'linear-gradient(135deg, #00ff00, #00cc00)',
+    body: `<div style="font-size:18px;color:#000;">Lose 30 Pounds With This</div>
+           <div style="font-size:28px;color:#ff0000;font-weight:bold;">ONE WEIRD TRICK</div>
+           <div style="font-size:16px;">Doctors HATE this!</div>`,
+    cta: 'LEARN THE SECRET',
+    ctaColor: '#fff',
+    ctaBg: '#ff6600',
+    persistent: false,
+  },
+  {
+    id: 5,
+    title: 'FREE GIVEAWAY',
+    bg: 'linear-gradient(135deg, #c0c0c0, #e0e0e0)',
+    body: `<div style="font-size:24px;color:#0000ff;" class="blink">FREE iPod Nano!!!</div>
+           <p>Just click here — no strings attached!</p>`,
+    cta: 'GET IT FREE!!!',
+    ctaColor: '#000',
+    ctaBg: '#00ffff',
+    persistent: false,
+  },
+  {
+    id: 6,
+    title: 'URGENT ALERT',
+    bg: 'linear-gradient(135deg, #ff4500, #ff6347)',
+    body: `<div style="font-size:18px;color:#fff;">&#128680; URGENT: Your account has been compromised! &#128680;</div>
+           <p style="color:#ffff00;">Verify your identity immediately to avoid suspension.</p>`,
+    cta: 'VERIFY NOW',
+    ctaColor: '#fff',
+    ctaBg: '#8b0000',
+    persistent: true,
+  },
+  {
+    id: 7,
+    title: 'Work From Home',
+    bg: 'linear-gradient(135deg, #ffd700, #ffaa00)',
+    body: `<div style="font-size:22px;color:#006600;">Make $5,000/week &#128176;</div>
+           <p>Working from home! No experience needed!</p>`,
+    cta: 'START EARNING NOW',
+    ctaColor: '#fff',
+    ctaBg: '#006600',
+    persistent: false,
+  },
+  {
+    id: 8,
+    title: 'Software Update',
+    bg: 'linear-gradient(135deg, #e0e0e0, #f5f5f5)',
+    body: `<div style="font-size:16px;color:#333;">&#9888;&#65039; Your browser is out of date!</div>
+           <p style="color:#666;">A critical update is required for security.</p>`,
+    cta: 'DOWNLOAD UPDATE',
+    ctaColor: '#fff',
+    ctaBg: '#0066cc',
+    persistent: false,
+  },
+  {
+    id: 9,
+    title: 'WINNER!!!',
+    bg: 'linear-gradient(135deg, #9400d3, #ff1493)',
+    body: `<div style="font-size:20px;color:#ffff00;" class="blink">&#127881; CONGRATULATIONS! &#127881;</div>
+           <p style="color:#fff;">You've been selected for a $500 Walmart Gift Card!</p>`,
+    cta: 'CLAIM $500 NOW',
+    ctaColor: '#000',
+    ctaBg: '#ffff00',
+    persistent: false,
+  },
+];
+
+function createPopupEl(data) {
+  const el = document.createElement('div');
+  el.className = 'popup';
+  el.dataset.popupId = data.id;
+  el.innerHTML = `
+    <div class="popup-header">
+      <span>${data.title}</span>
+      <button class="popup-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="popup-body" style="background:${data.bg}">
+      ${data.body}
+      <div>
+        <button class="popup-cta" style="color:${data.ctaColor};background:${data.ctaBg}">
+          ${data.cta}
+        </button>
+      </div>
+    </div>
+  `;
+  return el;
+}
+```
+
+**Step 2: Quick test — manually render one popup**
+
+Temporarily add to end of script:
+```javascript
+document.body.appendChild(createPopupEl(POPUPS[0]));
+```
+Open in browser. Expect: one garish popup visible. Remove the test line after verifying.
+
+**Step 3: Commit**
+
+```bash
+git add index.html
+git commit -m "Add pop-up content data and render function"
+```
+
+---
+
+### Task 5: Pop-up Scheduler & Positioning
+
+**Files:**
+- Modify: `index.html` (script block)
+
+**Step 1: Add pop-up scheduler logic**
+
+Add to the script block, after the render function:
+
+```javascript
+const activePopups = new Map(); // id -> element
+let popupQueue = [];
+let schedulerTimer = null;
+const MAX_VISIBLE = 5;
+const SPAWN_DELAY_MIN = 5000;
+const SPAWN_DELAY_MAX = 8000;
+const INITIAL_DELAY = 5000;
+const RESPAWN_DELAY_MIN = 10000;
+const RESPAWN_DELAY_MAX = 15000;
+
+function randomBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function getRandomPosition(el) {
+  const margin = 20;
+  const maxX = window.innerWidth - 360 - margin;
+  const maxY = window.innerHeight - 300 - margin;
+  const x = randomBetween(margin, Math.max(margin, maxX));
+  const y = randomBetween(margin, Math.max(margin, maxY));
+  return { x, y };
+}
+
+function shuffleArray(arr) {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+function spawnPopup(data) {
+  if (activePopups.size >= MAX_VISIBLE) return;
+  if (activePopups.has(data.id)) return;
+
+  const el = createPopupEl(data);
+  document.body.appendChild(el);
+
+  const pos = getRandomPosition(el);
+  gsap.set(el, { x: pos.x, y: pos.y, scale: 0, opacity: 0 });
+
+  // Random entrance animation
+  const entrances = ['bounce', 'slide', 'slam'];
+  const entrance = entrances[Math.floor(Math.random() * entrances.length)];
+
+  if (entrance === 'bounce') {
+    gsap.to(el, { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.7)' });
+  } else if (entrance === 'slide') {
+    const edge = Math.floor(Math.random() * 4);
+    const startX = edge === 0 ? -400 : edge === 1 ? window.innerWidth + 100 : pos.x;
+    const startY = edge === 2 ? -400 : edge === 3 ? window.innerHeight + 100 : pos.y;
+    gsap.set(el, { x: startX, y: startY, scale: 1, opacity: 1 });
+    gsap.to(el, { x: pos.x, y: pos.y, duration: 0.5, ease: 'power2.out' });
+  } else if (entrance === 'slam') {
+    gsap.to(el, { scale: 1, opacity: 1, duration: 0.15, ease: 'power4.in' });
+    // Screen shake
+    gsap.to(document.body, {
+      x: randomBetween(-3, 3), y: randomBetween(-3, 3),
+      duration: 0.05, repeat: 3, yoyo: true,
+      onComplete: () => gsap.set(document.body, { x: 0, y: 0 }),
+    });
+  }
+
+  activePopups.set(data.id, el);
+
+  // Close button
+  el.querySelector('.popup-close').addEventListener('click', () => dismissPopup(data));
+
+  // CTA button — dismiss or spawn another random popup
+  el.querySelector('.popup-cta').addEventListener('click', () => dismissPopup(data));
+}
+
+function dismissPopup(data) {
+  const el = activePopups.get(data.id);
+  if (!el) return;
+
+  // Random exit
+  const doShrink = Math.random() > 0.5;
+  if (doShrink) {
+    gsap.to(el, { scale: 0, opacity: 0, duration: 0.3, ease: 'power2.in', onComplete: () => el.remove() });
+  } else {
+    // Crumple
+    gsap.to(el, { scale: 0, opacity: 0, rotation: randomBetween(-15, 15), duration: 0.3, ease: 'power2.in', onComplete: () => el.remove() });
+  }
+
+  activePopups.delete(data.id);
+
+  // Persistent pop-ups reappear
+  if (data.persistent && isPlaying) {
+    setTimeout(() => {
+      if (isPlaying) spawnPopup(data);
+    }, randomBetween(RESPAWN_DELAY_MIN, RESPAWN_DELAY_MAX));
+  }
+}
+
+function startScheduler() {
+  popupQueue = shuffleArray(POPUPS);
+  let index = 0;
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    if (index >= popupQueue.length) {
+      popupQueue = shuffleArray(POPUPS);
+      index = 0;
+    }
+
+    spawnPopup(popupQueue[index]);
+    index++;
+
+    schedulerTimer = setTimeout(scheduleNext, randomBetween(SPAWN_DELAY_MIN, SPAWN_DELAY_MAX));
+  }
+
+  schedulerTimer = setTimeout(scheduleNext, INITIAL_DELAY);
+}
+
+function stopScheduler() {
+  clearTimeout(schedulerTimer);
+  schedulerTimer = null;
+}
+```
+
+**Step 2: Wire scheduler into play/pause**
+
+Update the `play()` and `pause()` functions:
+
+```javascript
+function play() {
+  isPlaying = true;
+  audio.play();
+  gsap.killTweensOf(spinTween);
+  spinTween.timeScale(1);
+  spinTween.resume();
+  startScheduler(); // <-- add
+}
+
+function pause() {
+  isPlaying = false;
+  audio.pause();
+  gsap.to(spinTween, { timeScale: 0, duration: 1, ease: 'power2.out', onComplete: () => spinTween.pause() });
+  stopScheduler(); // <-- add
+}
+```
+
+**Step 3: Test in browser**
+
+Click to play music. After ~5 seconds, pop-ups should start appearing. Verify:
+- Staggered appearance (5-8s apart)
+- Random positions within viewport
+- Various entrance animations (bounce, slide, slam with shake)
+- Close button dismisses with exit animation
+- Persistent pop-ups (#1, #3, #6) reappear after ~10-15s
+- Max 5 visible at once
+- Pop-ups stop spawning when paused
+
+**Step 4: Commit**
+
+```bash
+git add index.html
+git commit -m "Add pop-up scheduler with GSAP entrance/exit animations"
+```
+
+---
+
+### Task 6: Polish & Final Touches
+
+**Files:**
+- Modify: `index.html`
+
+**Step 1: Add cursor and hover feedback on vinyl**
+
+```css
+.vinyl-container:hover img {
+  filter: brightness(1.05);
+  transition: filter 0.2s;
+}
+```
+
+**Step 2: Add pop-up draggability (optional nice touch)**
+
+This makes pop-ups feel more like real windows. Add after the GSAP CDN script tag:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/Draggable.min.js"></script>
+```
+
+Then in the `spawnPopup` function, after appending the element:
+
+```javascript
+gsap.registerPlugin(Draggable);
+Draggable.create(el, { trigger: el.querySelector('.popup-header') });
+```
+
+**Step 3: Prevent pop-up spawning after all have been shown once if paused**
+
+Verify the scheduler properly stops on pause. No additional code needed if Task 5 is correct.
+
+**Step 4: Test full flow end-to-end**
+
+1. Open page — white with noise, vinyl centered, "Click to play" hint
+2. Click vinyl — spins, music plays, hint fades
+3. ~5s — pop-ups start appearing with varied animations
+4. Close pop-ups — exit animations work
+5. Persistent ones return after delay
+6. Click vinyl again — spin decelerates, music pauses, no new pop-ups
+7. Click again — resumes everything
+8. Drag pop-ups by their title bar
+
+**Step 5: Commit**
+
+```bash
+git add index.html
+git commit -m "Add polish: hover effects and draggable pop-ups"
+```
+
+---
+
+## Summary
+
+| Task | Description | Estimated Steps |
+|------|-------------|-----------------|
+| 1 | Page scaffold & noise background | 4 |
+| 2 | Vinyl spin animation & play/pause | 3 |
+| 3 | Pop-up CSS templates | 3 |
+| 4 | Pop-up content data & rendering | 3 |
+| 5 | Pop-up scheduler & positioning | 4 |
+| 6 | Polish & final touches | 5 |
+
+**Prerequisites from user:** `assets/record.png` (vinyl graphic) and `assets/track.mp3` (audio file) must be added before Task 2 testing.
