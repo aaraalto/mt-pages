@@ -173,6 +173,7 @@
       gsap.killTweensOf(spinTween);
       spinTween.timeScale(1);
       spinTween.resume();
+      startScheduler();
     }
 
     function pause() {
@@ -180,6 +181,7 @@
       audio.pause();
       // Decelerate the spin over 1 second then pause
       gsap.to(spinTween, { timeScale: 0, duration: 1, ease: 'power2.out', onComplete: () => spinTween.pause() });
+      stopScheduler();
     }
 
     const POPUPS = [
@@ -304,6 +306,127 @@
         </div>
       `;
       return el;
+    }
+
+    const activePopups = new Map(); // id -> element
+    let popupQueue = [];
+    let schedulerTimer = null;
+    const MAX_VISIBLE = 5;
+    const SPAWN_DELAY_MIN = 5000;
+    const SPAWN_DELAY_MAX = 8000;
+    const INITIAL_DELAY = 5000;
+    const RESPAWN_DELAY_MIN = 10000;
+    const RESPAWN_DELAY_MAX = 15000;
+
+    function randomBetween(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function getRandomPosition(el) {
+      const margin = 20;
+      const maxX = window.innerWidth - 360 - margin;
+      const maxY = window.innerHeight - 300 - margin;
+      const x = randomBetween(margin, Math.max(margin, maxX));
+      const y = randomBetween(margin, Math.max(margin, maxY));
+      return { x, y };
+    }
+
+    function shuffleArray(arr) {
+      const shuffled = [...arr];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+
+    function spawnPopup(data) {
+      if (activePopups.size >= MAX_VISIBLE) return;
+      if (activePopups.has(data.id)) return;
+
+      const el = createPopupEl(data);
+      document.body.appendChild(el);
+
+      const pos = getRandomPosition(el);
+      gsap.set(el, { x: pos.x, y: pos.y, scale: 0, opacity: 0 });
+
+      // Random entrance animation
+      const entrances = ['bounce', 'slide', 'slam'];
+      const entrance = entrances[Math.floor(Math.random() * entrances.length)];
+
+      if (entrance === 'bounce') {
+        gsap.to(el, { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.7)' });
+      } else if (entrance === 'slide') {
+        const edge = Math.floor(Math.random() * 4);
+        const startX = edge === 0 ? -400 : edge === 1 ? window.innerWidth + 100 : pos.x;
+        const startY = edge === 2 ? -400 : edge === 3 ? window.innerHeight + 100 : pos.y;
+        gsap.set(el, { x: startX, y: startY, scale: 1, opacity: 1 });
+        gsap.to(el, { x: pos.x, y: pos.y, duration: 0.5, ease: 'power2.out' });
+      } else if (entrance === 'slam') {
+        gsap.to(el, { scale: 1, opacity: 1, duration: 0.15, ease: 'power4.in' });
+        // Screen shake
+        gsap.to(document.body, {
+          x: randomBetween(-3, 3), y: randomBetween(-3, 3),
+          duration: 0.05, repeat: 3, yoyo: true,
+          onComplete: () => gsap.set(document.body, { x: 0, y: 0 }),
+        });
+      }
+
+      activePopups.set(data.id, el);
+
+      // Close button
+      el.querySelector('.popup-close').addEventListener('click', () => dismissPopup(data));
+
+      // CTA button — dismiss
+      el.querySelector('.popup-cta').addEventListener('click', () => dismissPopup(data));
+    }
+
+    function dismissPopup(data) {
+      const el = activePopups.get(data.id);
+      if (!el) return;
+
+      // Random exit
+      const doShrink = Math.random() > 0.5;
+      if (doShrink) {
+        gsap.to(el, { scale: 0, opacity: 0, duration: 0.3, ease: 'power2.in', onComplete: () => el.remove() });
+      } else {
+        // Crumple
+        gsap.to(el, { scale: 0, opacity: 0, rotation: randomBetween(-15, 15), duration: 0.3, ease: 'power2.in', onComplete: () => el.remove() });
+      }
+
+      activePopups.delete(data.id);
+
+      // Persistent pop-ups reappear
+      if (data.persistent && isPlaying) {
+        setTimeout(() => {
+          if (isPlaying) spawnPopup(data);
+        }, randomBetween(RESPAWN_DELAY_MIN, RESPAWN_DELAY_MAX));
+      }
+    }
+
+    function startScheduler() {
+      popupQueue = shuffleArray(POPUPS);
+      let index = 0;
+
+      function scheduleNext() {
+        if (!isPlaying) return;
+        if (index >= popupQueue.length) {
+          popupQueue = shuffleArray(POPUPS);
+          index = 0;
+        }
+
+        spawnPopup(popupQueue[index]);
+        index++;
+
+        schedulerTimer = setTimeout(scheduleNext, randomBetween(SPAWN_DELAY_MIN, SPAWN_DELAY_MAX));
+      }
+
+      schedulerTimer = setTimeout(scheduleNext, INITIAL_DELAY);
+    }
+
+    function stopScheduler() {
+      clearTimeout(schedulerTimer);
+      schedulerTimer = null;
     }
   </script>
 </body>
