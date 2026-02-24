@@ -232,8 +232,8 @@
       audioScratch.currentTime = 0;
       audioScratch.play();
 
-      // Decelerate the spin over 1 second then pause
-      gsap.to(spinTween, { timeScale: 0, duration: 1, ease: 'power2.out', onComplete: () => spinTween.pause() });
+      // Decelerate the spin to match scratch-pause duration
+      gsap.to(spinTween, { timeScale: 0, duration: 1.05, ease: 'power2.out', onComplete: () => spinTween.pause() });
       stopScheduler();
     }
 
